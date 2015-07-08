@@ -1,0 +1,359 @@
+#ifndef   __FREC_GEN_H__
+#define   __FREC_GEN_H__
+
+/*
+ * File: frec_gen.h
+ * Date (last revision): 4/11/2014
+ *
+ * Description: header and definition of functions, structs, constants...
+ *				of the associated file frec_gen.c
+ *
+ */
+
+
+//---------------------------------------------------------------------------
+// Node to the frequency list (to calculate the average frequency)
+typedef struct node
+{
+    struct node *prev;
+    float frequency;
+    struct node *next;
+}node_t;
+
+
+//---------------------------------------------------------------------------
+// System configuration parameters
+typedef struct system_config
+{
+	char activated_device;				// Frequency meter or function generator
+	int num_freq_nodes;					// Number of frequency nodes to do the frequency average
+	char average_type;					// Type of average: simple, weighted or exponential
+	unsigned long int per_pwm;			// Period of PWM signal
+	unsigned long int ton_pwm;			// Ton (time activated) of the signal
+	char square_activated;				// To activate the squared signal (PWM) or the non-squared signal (PWM1 + RAM)
+}system_config_t;
+
+
+
+//---------------------------------------------------------------------------
+// Packet (Ethernet + IP + UDP)
+
+
+//
+//	Encapsulation of an UDP packet
+//                              ----------------------------------------
+//							    |  UDP	|		    data			   |
+//								----------------------------------------
+//								|//////////////////////////////////////|
+//					----------------------------------------------------
+//					|     IP	|		|							   |
+//					----------------------------------------------------
+//					|//////////////////////////////////////////////////|
+//		----------------------------------------------------------------
+//		| ETHERNET  |			|		|							   |
+//		----------------------------------------------------------------
+//
+//
+
+
+//                          ----- UDP header -----
+#define UDP_DATA_LENGTH 			40
+#define UDP_HEADER_LENGTH 			0x08
+
+// Source UDP port
+#define DEFAULT_SOURCE_PORT_H 		0x00	// UDP 80 = 0x0050
+#define DEFAULT_SOURCE_PORT_L	    0x50
+// Destination UDP port
+#define DEFAULT_DEST_PORT_H 		0x00	// UDP 80 = 0x0050
+#define DEFAULT_DEST_PORT_L 		0x50
+
+#define DEFAULT_UDP_LENGTH_H 		((UDP_HEADER_LENGTH + UDP_DATA_LENGTH) >> 8)
+#define DEFAULT_UDP_LENGTH_L 		((UDP_HEADER_LENGTH + UDP_DATA_LENGTH) & 0x00FF)
+#define DEFAULT_UDP_CRC_H 			0x00
+#define DEFAULT_UDP_CRC_L			0x00
+
+//                          ----- IP header -----
+#define IP_HEADER_LENGTH 			0x14
+
+#define DEFAULT_VERSION_IHL 		0x45
+#define DEFAULT_DSCP_ECN 			0x00
+#define DEFAULT_IP_LENGTH_H 		((IP_HEADER_LENGTH + UDP_HEADER_LENGTH + UDP_DATA_LENGTH) >> 8)
+#define DEFAULT_IP_LENGTH_L 		((IP_HEADER_LENGTH + UDP_HEADER_LENGTH + UDP_DATA_LENGTH) & 0x00FF)
+#define DEFAULT_ID_H 				0x00
+#define DEFAULT_ID_L 				0x00
+#define DEFAULT_FLAGS_OFFSET_H 		0x40	// Don't Fragment the packet
+#define DEFAULT_FLAGS_OFFSET_L 		0x00
+#define DEFAULT_TTL 				0x80
+#define UDP_PROTOCOL 				0x11
+#define DEFAULT_PROTOCOL 			UDP_PROTOCOL
+#define DEFAULT_IP_CRC_H			0x00
+#define DEFAULT_IP_CRC_L			0x00
+// Source (FPGA) IP Address default: 172.19.5.91 (Fixed assignment)
+#define DEFAULT_IP_SOURCE_3 		0xAC
+#define DEFAULT_IP_SOURCE_2 		0x13
+#define DEFAULT_IP_SOURCE_1 		0x05
+#define DEFAULT_IP_SOURCE_0 		0x5B
+// Destination IP Address. If it's unknown -> broadcast address
+#define DEFAULT_IP_DEST_3 			0xAC
+#define DEFAULT_IP_DEST_2 			0x13
+#define DEFAULT_IP_DEST_1 			0x05
+#define DEFAULT_IP_DEST_0 			0x63
+
+//                          ----- Ethernet header -----
+#define ETHERNET_HEADER_LENGTH 		0x0E	// Ethernet header length = d'14 = h'0x0e
+#define MAX_ETHERNET_LENGTH			1458
+// Destination MAC. If it's unknown -> broadcast address
+#define DEFAULT_DEST_MAC_5 			0xff
+#define DEFAULT_DEST_MAC_4 			0xff
+#define DEFAULT_DEST_MAC_3 			0xff
+#define DEFAULT_DEST_MAC_2 			0xff
+#define DEFAULT_DEST_MAC_1 			0xff
+#define DEFAULT_DEST_MAC_0 			0xff
+
+// Source (FPGA) MAC. By default, I consider 00:80:2f:14:67:a3
+#define DEFAULT_SOURCE_MAC_5 		0x00
+#define DEFAULT_SOURCE_MAC_4 		0x80
+#define DEFAULT_SOURCE_MAC_3 		0x2f
+#define DEFAULT_SOURCE_MAC_2 		0x14
+#define DEFAULT_SOURCE_MAC_1 		0x67
+#define DEFAULT_SOURCE_MAC_0 		0xa3
+// Ethertype/length
+#define DEFAULT_ETHERTYPE_H 		0x08	// It means that there is an IPv4 ...
+#define DEFAULT_ETHERTYPE_L 		0x00	// ... packet encapsulated in the frame
+
+#define PKT_LENGTH 					(ETHERNET_HEADER_LENGTH + IP_HEADER_LENGTH + UDP_HEADER_LENGTH + UDP_DATA_LENGTH)
+
+
+typedef struct udp_header
+{
+	char source_port_h;		// Source port
+	char source_port_l;
+	char dest_port_h;		// Destination port
+	char dest_port_l;
+	char udplength_h;		// Length
+	char udplength_l;
+	char crc_h;				// Checksum
+	char crc_l;
+	char data[UDP_DATA_LENGTH]; 		// Data
+
+}udp_header_t;
+
+
+typedef struct ip_header
+{
+	char version_ihl;		// Version = 4bits ; IHL = 4bits
+	char dscp_ecn;			// DSCP = 6bits ; ECN = 2bits
+	char iplength_h;
+	char iplength_l;		// IP length
+	char id_h;
+	char id_l;				// Identification
+	char flags_offset_h;	// Flags = 3bits ; Fragment offset = 13bits
+	char flags_offset_l;
+	char ttl;				// Time to live
+	char protocol;
+	char ipcrc_h;
+	char ipcrc_l;			// Header checksum
+	char ipsource3;			// IP source address
+	char ipsource2;
+	char ipsource1;
+	char ipsource0;
+	char ipdest3;			// IP destination address
+	char ipdest2;
+	char ipdest1;
+	char ipdest0;
+
+	struct udp_header udp; // Payload of IP packet
+
+}ip_header_t;
+
+
+typedef struct pkt_buffer
+{
+	char mac_dest5;   		// Destination MAC
+	char mac_dest4;
+	char mac_dest3;
+	char mac_dest2;
+	char mac_dest1;
+	char mac_dest0;
+	char mac_source5; 		// Source MAC
+	char mac_source4;
+	char mac_source3;
+	char mac_source2;
+	char mac_source1;
+	char mac_source0;
+	char ethertype_h;		// Ethernet type/length
+	char ethertype_l;
+
+	struct ip_header ip;	// Payload of Ethernet packet
+
+}pkt_t;
+
+
+
+typedef struct arp_header
+{
+
+	char hardware_type_h;
+	char hardware_type_l;
+	char protocol_type_h;
+	char protocol_type_l;
+	char hardware_size;
+	char protocol_size;
+	char opcode_h;
+	char opcode_l;
+	char mac_sender5;
+	char mac_sender4;
+	char mac_sender3;
+	char mac_sender2;
+	char mac_sender1;
+	char mac_sender0;
+	char ipsender3;
+	char ipsender2;
+	char ipsender1;
+	char ipsender0;
+	char mac_target5;
+	char mac_target4;
+	char mac_target3;
+	char mac_target2;
+	char mac_target1;
+	char mac_target0;
+	char iptarget3;
+	char iptarget2;
+	char iptarget1;
+	char iptarget0;
+
+}arp_header_t;
+
+
+typedef struct pkt_buffer_2
+{
+
+	char mac_dest5;   		// Destination MAC
+	char mac_dest4;
+	char mac_dest3;
+	char mac_dest2;
+	char mac_dest1;
+	char mac_dest0;
+	char mac_source5; 		// Source MAC
+	char mac_source4;
+	char mac_source3;
+	char mac_source2;
+	char mac_source1;
+	char mac_source0;
+	char ethertype_h;		// Ethernet type/length
+	char ethertype_l;
+
+	struct arp_header arp;	// Payload of Ethernet packet
+
+}pkt_buffer_2_t;
+
+
+//---------------------------------------------------------------------------
+// Constants associated with the board instrumentation
+
+#define FREQUENCY_METER 			0				// Frequency meter
+#define FUNCTION_GENERATOR 			1				// Function generator
+#define NUM_FREQ_NODES_DEFAULT 		20				// Default number of frequency nodes (to do the frequency average)
+#define SIMPLE_MOVING_AVERAGE 		0				// Simple moving average
+#define WEIGHTED_MOVING_AVERAGE		1				// Weighted moving average
+#define EXPONENTIAL_MOVING_AVERAGE 	2				// Exponential moving average
+#define PERIOD_PWM_DEFAULT 			0x00004E20		// Default period of the PWM signal
+#define TON_PWM_DEFAULT 			0x00002710		// Default ton of the PWM signal
+#define SQUARE_SIGNAL_ACTIVATED 	1				// Square signal
+#define NON_SQUARE_SIGNAL_ACTIVATED 0				// Non-Square signal
+
+#define RAM_PWM_SIZE 				36				// Size of CCP's RAM
+#define LCD_WR_COMMAND_REG 			0				// LCD ...
+#define LCD_WR_DATA_REG 			2				// ... commands
+
+
+//---------------------------------------------------------------------------
+//Definition of Task Priorities
+#define VI_TASK_PRIORITY     		 8
+#define RIC_TASK_PRIORITY    		 7
+
+
+//---------------------------------------------------------------------------
+//Definition of Global variables
+unsigned int aaa,rx_len,packet_num; 	// Ethernet ...
+unsigned char RXT[MAX_ETHERNET_LENGTH]; // ... variables
+
+int captura_valida = 0;					// Used to validate a capture
+struct node *first = NULL, *last = NULL; // Pointers to the frequency list (to calculate the average)
+struct system_config sc;				// Node that stores the global system configuration
+unsigned long int captura = 1, capturaant = 0, sw = 0;
+
+float frecuencia = 0.0;
+int last_instrument = -1;
+int num_nodes = 0;						// Current number of frequency nodes (used in the initialization of the list)
+
+int custom_signal[36];					// Signal to be stored in the CCP's RAM
+
+//---------------------------------------------------------------------------
+/*
+ *
+ * Definition of functions
+ *
+ */
+
+// Tasks (Threads)
+void VITask(void*);
+void RICTask(void*);
+
+// LCD
+void lcd_init( void );
+void lcd_clear( void );
+void lcd_write_first_line(char *);
+void lcd_write_second_line(char *);
+
+// Frequency list operation
+struct node *create(float);
+void insert_beginning(float);//struct node *, struct node *, float);
+void insert_at_end(float);//struct node *, struct node *, float);
+void delete_beginning( void);//struct node *, struct node *);
+void delete_at_end( void );//struct node *, struct node *);
+void delete_list( void );
+
+// Frequency meter
+void frequency_meter( void );
+float calculate_new_freq ( void);//unsigned long int, unsigned long int );
+float calculate_average_frequency( float );
+void show_frequency_lcd( float );
+
+// Function generator
+void function_generator( void );
+void write_ram_function_generator(int *, int);
+
+// CCP configuration
+void reset_ccp( void );
+void configuration_ccp_captura_0( void );
+void configuration_function_generator_square( void );
+void configuration_function_generator_non_square( void );
+void configuration_function_generator_ton( void );
+void ccp_activate_square( void );
+void ccp_activate_non_square( void );
+
+// Other functions related with the instruments
+void system_config_init( void );
+void assign_interruptions( void );
+void decimal_to_binary(long , char *, int);
+
+// Interrupts
+void interrupt_captura_0(void* );
+void edge_button_interrupts(void* );
+void ethernet_interrupts();
+
+// Network conexion
+void assign_pkt_defaults( struct pkt_buffer *pkt );
+unsigned int calculate_ip_checksum( struct pkt_buffer *pkt);
+unsigned int calculate_udp_checksum( struct pkt_buffer *pkt);
+int pkt_is_viprotocol(unsigned char *buffer, int rx_len);
+int pkt_is_arprequest(unsigned char *buffer, int rx_len);
+void pkt_changes_to_send(struct pkt_buffer *pkt);
+void pkt_arp_changes_to_send(struct pkt_buffer_2 *pkt);
+
+#endif /* __FREC_GEN_H__ */
+
+
+
+

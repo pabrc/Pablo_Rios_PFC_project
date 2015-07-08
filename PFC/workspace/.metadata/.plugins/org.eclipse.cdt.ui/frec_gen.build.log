@@ -1,0 +1,10 @@
+
+**** Build of configuration Nios II for project frec_gen ****
+
+make all 
+Info: Building ../frec_gen_bsp/
+make --no-print-directory -C ../frec_gen_bsp/
+[BSP build complete]
+[frec_gen build complete]
+
+**** Build Finished ****

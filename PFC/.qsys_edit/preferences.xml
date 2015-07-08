@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<preferences>
+ <debug showDebugMenu="0" />
+ <systemtable>
+  <columns>
+   <connections preferredWidth="175" />
+   <irq preferredWidth="34" />
+   <inputclock preferredWidth="139" />
+   <name preferredWidth="175" />
+   <description preferredWidth="125" />
+   <export preferredWidth="131" />
+  </columns>
+ </systemtable>
+ <clocktable>
+  <columns>
+   <clockname preferredWidth="383" />
+   <clocksource preferredWidth="380" />
+   <frequency preferredWidth="377" />
+  </columns>
+ </clocktable>
+ <library
+   expandedCategories="Project/Terasic Technologies Inc,Library/PLL,Project,Library" />
+ <window width="1452" height="838" x="221" y="65" />
+ <hdlexample language="VHDL" />
+ <generation synthesis="VHDL" path="C:/Users/Pablo/PFC" />
+</preferences>
